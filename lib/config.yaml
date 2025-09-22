@@ -3,17 +3,17 @@ random_seed: 414
 dataset:
   type: 'rope3d'
   root_dir: '/home/mindspore/work/Rope3D_data'
-  batch_size: 8
+  batch_size: 48
   num_workers: 0
   class_merging: False
   use_dontcare: False
   use_3d_center: False
-  load_data_once: False
+  load_data_once: True
   crop_with_optical_center: True
   writelist: ['car','big_vehicle','pedestrian','cyclist']
   eval_cls: ['car','big_vehicle','pedestrian','cyclist']
   random_flip: 0.5
-  random_crop: 0.5
+  random_crop: 0.2
   scale: 0.66
   shift: 0.1
   scale_expand : 1.5

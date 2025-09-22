@@ -96,6 +96,9 @@ def main_worker(local_rank, nprocs, args):
                                 drop_last=False)
     # build model
     model = build_model(cfg['model'],train_loader.dataset.cls_mean_size)
+    from torch_npu.contrib import amp
+    model, optimizer = amp.initialize(model, optimizer, opt_level="O1", loss_scale=128.0)
+
     if args.evaluate:
         tester = Tester(cfg, model, val_loader, logger)
         tester.test()
