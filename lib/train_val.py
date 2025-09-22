@@ -1,3 +1,6 @@
+import torch
+import torch_npu
+from torch_npu.contrib import transfer_to_npu
 import os
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -40,17 +43,17 @@ def create_logger(log_file):
     return logging.getLogger(__name__)
 
 
-def main_worker(local_rank, nprocs, args):  
+def main_worker(local_rank, nprocs, args):
     # load cfg
     args.local_rank = local_rank
     assert (os.path.exists(args.config))
     cfg = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
-    
+
     import shutil
     if not args.evaluate and local_rank==0:
         if os.path.exists(os.path.join(cfg['trainer']['log_dir'], 'lib/')):
             shutil.rmtree(os.path.join(cfg['trainer']['log_dir'], 'lib/'))
-        
+
         shutil.copytree('./lib', os.path.join(cfg['trainer']['log_dir'], 'lib/'))
 
     if args.seed is not None:
@@ -64,14 +67,14 @@ def main_worker(local_rank, nprocs, args):
                       'from checkpoints.')
 
     # ip = random.randint(1000,10000)
-    dist.init_process_group(backend='nccl',
+    dist.init_process_group(backend='hccl',
                         init_method='tcp://127.0.0.1:'+str(args.ip),
                         world_size=args.nprocs,
                         rank=local_rank)
 
     os.makedirs(cfg['trainer']['log_dir'],exist_ok=True)
-    logger = create_logger(os.path.join(cfg['trainer']['log_dir'],'train.log'))    
-    
+    logger = create_logger(os.path.join(cfg['trainer']['log_dir'],'train.log'))
+
 
     train_set = Rope3D(root_dir=cfg['dataset']['root_dir'], split='train', cfg=cfg['dataset'])
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_set)
@@ -79,7 +82,7 @@ def main_worker(local_rank, nprocs, args):
                                 batch_size= int(cfg['dataset']['batch_size'] * 4 / args.nprocs),
                                 num_workers=2,
                                 shuffle=False,
-                                pin_memory=True,
+                                pin_memory=False,
                                 drop_last=False,
                                 sampler=train_sampler)
 
@@ -88,20 +91,22 @@ def main_worker(local_rank, nprocs, args):
                                 batch_size=cfg['dataset']['batch_size']*4,
                                 num_workers=2,
                                 shuffle=False,
-                                pin_memory=True,
+                                pin_memory=False,
                                 drop_last=False)
     # build model
     model = build_model(cfg['model'],train_loader.dataset.cls_mean_size)
     if args.evaluate:
         tester = Tester(cfg, model, val_loader, logger)
         tester.test()
-        return                                                                   
+        return
 
 
     # print(local_rank)
-    torch.cuda.set_device(local_rank)
-    model.cuda(local_rank)
-    model = torch.nn.parallel.DistributedDataParallel(model,device_ids=[local_rank],find_unused_parameters=True)
+    device = torch.device(f'npu:{local_rank}')
+    torch.npu.set_device(device)
+    model.to(device)
+    model = torch.nn.parallel.DistributedDataParallel(
+    model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
     # print(f"model: {next(model.parameters()).device}")
 
@@ -131,9 +136,9 @@ if __name__ == '__main__':
     parser.add_argument('--seed',default=None,type=int, help='seed for initializing training. ')
     parser.add_argument('--local_rank',default=0,type=int,help='node rank for distributed training')
     parser.add_argument('--ip',default=1222,type=int,help='node rank for distributed training')
-    
+
 
     args = parser.parse_args()
-    args.nprocs = torch.cuda.device_count()
+    args.nprocs = torch.npu.device_count()
     main_worker(args.local_rank,args.nprocs, args)
     # mp.spawn(main_worker, nprocs=args.nprocs, args=(args.nprocs, args))
