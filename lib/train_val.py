@@ -1,5 +1,7 @@
 import torch
 import torch_npu
+import torchvision
+import torchvision_npu
 from torch_npu.contrib import transfer_to_npu
 import os
 import warnings
@@ -24,7 +26,6 @@ from datetime import datetime
 import numpy as np
 from torch.utils.data import DataLoader
 from lib.datasets.rope3d import Rope3D
-import torch
 import torch.multiprocessing as mp
 import random
 import torch.backends.cudnn as cudnn

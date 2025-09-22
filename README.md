@@ -38,31 +38,49 @@ conda activate rope3d
 
 * Install the dependent python libraries:
 ~~~
-pip install torch==1.5.0 torchvision==0.6.0 numpy==1.23.5 numba==0.58.1 scikit-image==0.21.0 opencv-python==3.4.10.37 tqdm==4.65.0 matplotlib==3.7.1 protobuf==4.22.1 pyyaml==6.0
+pip3 install torch==2.1.0 pyyaml setuptools torch-npu==2.1.0.post13
+# 指定官方源安装
+pip install torchvision==0.16.0 --index-url https://download.pytorch.org/whl/cpu
+# 下载Torchvision Adapter代码，进入插件根目录
+git clone https://gitcode.com/ascend/vision.git vision_npu
+cd vision_npu
+git checkout v0.16.0-6.0.0
+# 安装依赖库
+pip3 install -r requirement.txt
+# 初始化CANN环境变量
+source /usr/local/Ascend/ascend-toolkit/set_env.sh # Default path, change it if needed.
+# 编包
+python setup.py bdist_wheel
+# 安装
+cd dist
+pip install torchvision_npu-0.16.*.whl
+# Default path, change it if needed.
+#运行以下命令初始化CANN环境变量
+source /usr/local/Ascend/ascend-toolkit/set_env.sh
 ~~~
 
 ## Dataset
-- [x] Download the official Rope3D dataset from [**Here**](https://pan.baidu.com/s/1Tt014qMNcDxAMCkEWH_EZQ?pwd=d1yd).  
+- [x] Download the official Rope3D dataset from [**Here**](https://pan.baidu.com/s/1Tt014qMNcDxAMCkEWH_EZQ?pwd=d1yd).
     ~~~
     tar -zxvf Rope3D_data.tar.gz
     ~~~
-    The directory will be as follows:  
-    Rope3D_data  
-    ├── box3d_depth_dense  
-    ├── calib  
-    ├── denorm  
-    ├── extrinsics  
-    ├── image_2  
-    ├── ImageSets  
-    ├── label_2  
-    ├── label_2_4cls_filter_with_roi_for_eval  
-    └── label_2_4cls_for_train  
+    The directory will be as follows:
+    Rope3D_data
+    ├── box3d_depth_dense
+    ├── calib
+    ├── denorm
+    ├── extrinsics
+    ├── image_2
+    ├── ImageSets
+    ├── label_2
+    ├── label_2_4cls_filter_with_roi_for_eval
+    └── label_2_4cls_for_train
 
 - [ ] Support the DAIR-V2X-I dataset
 - [ ] Support the KITTI dataset
 
 ## Train
-- [x] Rope3D dataset 
+- [x] Rope3D dataset
 
     modify the 'root_dir' in config.yaml, use your own path to the downloaded 'Rope3D_data'
     ~~~
@@ -72,9 +90,9 @@ pip install torch==1.5.0 torchvision==0.6.0 numpy==1.23.5 numba==0.58.1 scikit-i
 - [ ] KITTI dataset
 
 ## Eval
-- [x] Rope3D dataset  
+- [x] Rope3D dataset
 
-    modify the 'root_dir' in config.yaml, use your own path to the downloaded 'Rope3D_data'  
+    modify the 'root_dir' in config.yaml, use your own path to the downloaded 'Rope3D_data'
     modify the 'resume_model' in config.yaml (tester), use your own path to checkpoint
     ~~~
     bash eval.sh
@@ -98,7 +116,7 @@ url={https://openreview.net/forum?id=v2oGdhbKxi}
 ~~~
 ## Acknowledgements
 Many thanks to following codes that help us a lot in building this codebase:
-- [GUPNet](https://github.com/SuperMHP/GUPNet/tree/main) 
+- [GUPNet](https://github.com/SuperMHP/GUPNet/tree/main)
 - [DID-M3D](https://github.com/SPengLiang/DID-M3D)
 - [MonoLSS](https://github.com/Traffic-X/MonoLSS)
 - [BEVHeight](https://github.com/ADLab-AutoDrive/BEVHeight)
