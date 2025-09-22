@@ -80,7 +80,7 @@ def main_worker(local_rank, nprocs, args):
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_set)
     train_loader = DataLoader(dataset=train_set,
                                 batch_size= int(cfg['dataset']['batch_size'] * 4 / args.nprocs),
-                                num_workers=2,
+                                num_workers=cfg['dataset'].get('num_workers', 0),
                                 shuffle=False,
                                 pin_memory=False,
                                 drop_last=False,
@@ -89,7 +89,7 @@ def main_worker(local_rank, nprocs, args):
     val_set = Rope3D(root_dir=cfg['dataset']['root_dir'], split='val', cfg=cfg['dataset'])
     val_loader = DataLoader(dataset=val_set,
                                 batch_size=cfg['dataset']['batch_size']*4,
-                                num_workers=2,
+                                num_workers=cfg['dataset'].get('num_workers', 0),
                                 shuffle=False,
                                 pin_memory=False,
                                 drop_last=False)

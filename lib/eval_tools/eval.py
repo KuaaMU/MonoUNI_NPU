@@ -1273,7 +1273,7 @@ def eval_from_scrach(log_,gt_dir, det_dir, eval_cls_list=None, ap_mode=40):
     if eval_cls_list == None:
         eval_cls_list = ['Car']
 
-    
+
     all_f = sorted(os.listdir(det_dir))
     cared_result = []
     all_gt, all_det = [], []

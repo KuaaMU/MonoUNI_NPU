@@ -1,4 +1,7 @@
 import torch
+import torch_npu
+import torchvision
+import torchvision_npu
 import torch.nn as nn
 import numpy as np
 
@@ -25,7 +28,7 @@ def weights_init_xavier(m):
         if m.affine:
             nn.init.constant_(m.weight, 1.0)
             nn.init.constant_(m.bias, 0.0)
- 
+
 def weights_init_classifier(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -61,7 +64,7 @@ class MonoUNI(nn.Module):
             max_f = 2800
             interval_min = torch.tensor(self.cfg['interval_min']) - 4.5
             self.interval_min = interval_min / max_f
-            interval_max = torch.tensor(self.cfg['interval_max']) + 4.5 
+            interval_max = torch.tensor(self.cfg['interval_max']) + 4.5
             self.interval_max = interval_max / min_f
             self.bin_size = 5
 
@@ -169,12 +172,12 @@ class MonoUNI(nn.Module):
             box2d_masked_copy = torch.zeros_like(scale_box2d_masked)
             box2d_masked_copy[:,0] = scale_box2d_masked[:,0]
             # box2d_masked_copy[:,1] = 0
-            # box2d_masked_copy[:,2] = 0 
+            # box2d_masked_copy[:,2] = 0
             box2d_masked_copy[:,3] = 239
             box2d_masked_copy[:,4] = 127
             roi_feature_global = roi_align(feat,box2d_masked_copy,[7,7])
             roi_feature_masked_ = torch.cat((roi_feature_masked,roi_feature_global),1)
-            
+
 
 
             # #get coord range of each roi
@@ -203,7 +206,7 @@ class MonoUNI(nn.Module):
             # #concatenate coord maps with feature maps in the channel dim
             cls_hots = torch.zeros(num_masked_bin,self.cls_num).to(device_id)
             cls_hots[torch.arange(num_masked_bin).to(device_id),cls_ids[mask].long()] = 1.0
-            
+
             roi_feature_masked = torch.cat([roi_feature_masked_,coord_maps,cls_hots.unsqueeze(-1).unsqueeze(-1).repeat([1,1,7,7])],1)
 
 
@@ -214,7 +217,7 @@ class MonoUNI(nn.Module):
             #compute 3d dimension offset
 
             size3d_offset = self.size_3d(roi_feature_masked)[:,:,0,0]
-            
+
 
 
             vis_depth = self.vis_depth(roi_feature_masked)
@@ -223,7 +226,7 @@ class MonoUNI(nn.Module):
             att_depth_uncer = self.att_depth_uncer(roi_feature_masked)
 
 
-            
+
             if self.cfg['multi_bin']:
                 depth_bin = self.depth_bin(roi_feature_masked)[:,:,0,0]
                 res['depth_bin']= depth_bin
@@ -240,12 +243,12 @@ class MonoUNI(nn.Module):
                 pitch_sin = roi_sin.view(roi_calibs.shape[0], 1, 1, 1)
                 pitch_cos = roi_cos.view(roi_calibs.shape[0], 1, 1, 1)
                 norm_theta = (pitch_cos - pitch_sin * tan_maps).float()
-                
+
                 interval_min = self.interval_min.unsqueeze(0).unsqueeze(-1).unsqueeze(-1).repeat(vis_depth.shape[0],1,1,1).to(vis_depth.device)
                 interval_max = self.interval_max.unsqueeze(0).unsqueeze(-1).unsqueeze(-1).repeat(vis_depth.shape[0],1,1,1).to(vis_depth.device)
                 if mode=='train':
                     vis_depth_ =   vis_depth * (interval_max-interval_min) + interval_min
-                    vis_depth_ = vis_depth_ * norm_theta / fp * scale_depth 
+                    vis_depth_ = vis_depth_ * norm_theta / fp * scale_depth
                     ins_depth = vis_depth_ + att_depth
                     ins_depth_uncer = torch.logsumexp(torch.stack([vis_depth_uncer, att_depth_uncer], -1), -1)
                 else:
@@ -257,7 +260,7 @@ class MonoUNI(nn.Module):
                     depth_bin = torch.cat((depth_bin_1[:,1:2],depth_bin_2[:,1:2],depth_bin_3[:,1:2],depth_bin_4[:,1:2],depth_bin_5[:,1:2]),-1)
                     _,depth_bin_max_index = torch.max(depth_bin,-1)
                     vis_depth_ =   vis_depth * (interval_max-interval_min) + interval_min
-                    vis_depth_ = vis_depth_ * norm_theta / fp * scale_depth 
+                    vis_depth_ = vis_depth_ * norm_theta / fp * scale_depth
                     vis_depth = vis_depth_[torch.arange(depth_bin_max_index.shape[0]),depth_bin_max_index]
                     att_depth = att_depth[torch.arange(depth_bin_max_index.shape[0]),depth_bin_max_index]
                     vis_depth_uncer = vis_depth_uncer[torch.arange(depth_bin_max_index.shape[0]),depth_bin_max_index]
@@ -274,7 +277,7 @@ class MonoUNI(nn.Module):
                 ins_depth_uncer = torch.logsumexp(torch.stack([vis_depth_uncer, att_depth_uncer], -1), -1)
 
 
-            
+
 
             res['train_tag'] = torch.ones(num_masked_bin).type(torch.bool).to(device_id)
             res['heading'] = self.heading(roi_feature_masked)[:,:,0,0]
@@ -286,7 +289,7 @@ class MonoUNI(nn.Module):
             res['ins_depth_uncer'] = ins_depth_uncer
             res['offset_3d'] = self.offset_3d(roi_feature_masked)[:,:,0,0]
             res['size_3d']= size3d_offset
-            
+
         else:
             res['offset_3d'] = torch.zeros([1,2]).to(device_id)
             res['size_3d'] = torch.zeros([1,3]).to(device_id)
